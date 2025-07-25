@@ -1,20 +1,8 @@
-# MythicMate
+# Keystone Hub
 
-**MythicMate** is a robust Discord bot designed for World of Warcraft players who love running Mythic+ dungeons. This bot helps you quickly form balanced groups, manage roles, track statistics, and organise scheduled runs. Whether you're a tank, healer, or DPS, MythicMate ensures smooth group formation and provides valuable insights into your M+ journey.
+**This is a copy of @Beel12213 Discord Bot, Tweaked for our community.
 
-## Latest Features
-- **🗓️ Run Scheduling**: Schedule runs for later or start them immediately
-- **⏰ DM Reminders**: Automatic notifications 15 minutes before scheduled runs
-- **📊 Statistics Tracking**: View personal and server statistics for M+ runs
-- **🏆 Leaderboards**: Compete with other server members across various categories
-- **👥 Backup System**: Automatically manage backup players for each role
-- **📈 Server-Specific Data**: All statistics and leaderboards are server-specific
-
-[View Full Changelog](CHANGELOG.md)
-
-## Invite MythicMate to Your Server
-
-Click [here](https://discord.com/oauth2/authorize?client_id=1271394615119056918&permissions=268789824&integration_type=0&scope=bot) to invite MythicMate to your Discord server.
+**Keystone Hub** is a robust Discord bot designed for World of Warcraft players who love running Mythic+ dungeons. This bot helps you quickly form balanced groups, manage roles, track statistics, and organise scheduled runs. Whether you're a tank, healer, or DPS, MythicMate ensures smooth group formation and provides valuable insights into your M+ journey.
 
 ## Features
 
@@ -45,8 +33,6 @@ Click [here](https://discord.com/oauth2/authorize?client_id=1271394615119056918&
 - Clear role option to change roles
 - Automatic backup promotion when spots open
 - Notification system for role changes
-
-![Example Embed](https://i.ibb.co/sWW092m/Screenshot-2024-08-09-222355.png)
 
 ## Commands
 
@@ -125,17 +111,5 @@ MythicMate requires these Discord permissions:
 - Manage Messages
 - Use External Emojis
 
-## Contributing
-We welcome contributions! Please:
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to your branch
-5. Create a Pull Request
-
 ## License
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-## Contact
-For questions or suggestions:
-- Discord: thisisbeel
