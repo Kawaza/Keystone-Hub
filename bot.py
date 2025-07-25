@@ -35,36 +35,6 @@ print(f"- Message Content: {intents.message_content}")
 # Initialize the bot with a command prefix and intents
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-# Define the available dungeons and their abbreviations
-# This dictionary maps full dungeon names to a list of their common abbreviations or shorthand names
-dungeon_aliases = {
-    "Ara-Kara, City of Echoes": ["ara", "city of echoes", "coe"],
-    "City of Threads": ["threads", "city of threads", "cot"],
-    "The Stonevault": ["stonevault", "vault"],
-    "The Dawnbreaker": ["dawnbreaker", "breaker"],
-    "Mists of Tirna Scithe": ["mists", "tirna", "scithe", "mots"],
-    "The Necrotic Wake": ["nw", "necrotic wake", "necrotic"],
-    "Siege of Boralus": ["siege", "boralus", "sob"],
-    "Grim Batol": ["grim", "batol", "gb"],
-    "Operation: Floodgate": ["flood", "floodgate", "of"],
-    "Cinderbrew Meadery": ["cinder", "meadery", "brew", "cm"],
-    "Darkflame Cleft": ["dark", "flame", "cleft", "dc"],
-    "The Rookery": ["rook", "rookery"],
-    "Priory of the Sacred Flame": ["priory", "sacred", "flame", "psf"],
-    "The MOTHERLODE!!": ["ml", "mother", "motherlode"],
-    "Theater of Pain": ["top", "theater", "pain", "tp"],
-    "Operation: Mechagon: Workshop": ["workshop", "mech", "omw"]
-}
-
-# Convert to a more efficient structure using sets for O(1) lookup
-dungeon_lookup = {}
-for full_name, aliases in dungeon_aliases.items():
-    for alias in aliases + [full_name.lower()]:
-        dungeon_lookup[alias] = full_name
-
-def translate_dungeon_name(user_input):
-    return dungeon_lookup.get(user_input.lower())
-
 # Define the roles for Tank, Healer, and DPS using emoji symbols
 role_emojis = {
     "Tank": "🛡️",
@@ -144,54 +114,41 @@ async def update_group_embed(message, embed, group_state):
 
 @bot.tree.command(name="lfm", description="Start looking for members for a Mythic+ run.")
 @app_commands.describe(
-    dungeon="Enter the dungeon name or abbreviation",
+    dungeon="Enter the dungeon name (max 30 characters)",
     key_level="Enter the key level (e.g., +10)",
-    role="Select your role in the group",
-    schedule="When to run (e.g., 'now' or 'YYYY-MM-DD HH:MM' in server time)"
+    role="Select your role in the group, Tank, Healer or DPS",
+    time="When to run (e.g., The time you want to run)"
 )
-async def lfm(interaction: discord.Interaction, dungeon: str, key_level: str, role: str, schedule: str):
+async def lfm(interaction: discord.Interaction, dungeon: str, key_level: str, role: str, time: str):
     print(f"LFM command received from {interaction.user}")
     print("Starting LFM command...")
     
-    # Validate dungeon name
-    full_dungeon_name = translate_dungeon_name(dungeon)
-    if not full_dungeon_name:
+    # Validate dungeon name (allow any non-empty string up to 30 chars)
+    if not dungeon or len(dungeon) > 30:
         await interaction.response.send_message(
-            f"Sorry, I couldn't recognize the dungeon name '{dungeon}'. Please try again with a valid name or abbreviation.",
+            f"Dungeon name must be 1-30 characters.",
             ephemeral=True
         )
         return
+    full_dungeon_name = dungeon.strip()
 
-    # Handle scheduling
-    schedule_time = None
-    if schedule.lower() != "now":
-        try:
-            schedule_time = datetime.strptime(schedule, "%Y-%m-%d %H:%M")
-            schedule_time = pytz.UTC.localize(schedule_time)
-            
-            # Ensure scheduled time is in the future
-            if schedule_time <= datetime.now(pytz.UTC):
-                await interaction.response.send_message(
-                    "The scheduled time must be in the future.",
-                    ephemeral=True
-                )
-                return
-        except ValueError:
-            await interaction.response.send_message(
-                "Invalid date/time format. Please use 'now' or 'YYYY-MM-DD HH:MM'.",
-                ephemeral=True
-            )
-            return
+    # Validate time (allow any non-empty string up to 30 chars)
+    if not time or len(time) > 30:
+        await interaction.response.send_message(
+            f"Time must be 1-30 characters.",
+            ephemeral=True
+        )
+        return
+    time_str = time.strip()
+    time_time = None  # No longer used, but kept for compatibility with later code
 
-    # Format schedule string and send initial response
-    schedule_str = "now" if not schedule_time else schedule_time.strftime("%Y-%m-%d %H:%M")
     await interaction.response.defer()
 
     # Initialize group state and create embed
-    group_state = GroupState(interaction, role, schedule_time)
+    group_state = GroupState(interaction, role, time_time)
     embed = discord.Embed(
         title=f"Dungeon: {full_dungeon_name}",
-        description=f"Difficulty: {key_level}\nScheduled: {schedule_str}",
+        description=f"Difficulty: {key_level}\nTimed: {time_str}",
         color=discord.Color.blue()
     )
     embed.set_author(name=interaction.user.display_name, icon_url=interaction.user.avatar.url)
@@ -214,11 +171,7 @@ async def lfm(interaction: discord.Interaction, dungeon: str, key_level: str, ro
     for emoji in role_emojis.values():
         await group_message.add_reaction(emoji)
 
-    # Set up reminder if scheduled for later
-    if schedule_time:
-        group_state.reminder_task = asyncio.create_task(
-            group_state.send_reminder(interaction.channel)
-        )
+    # No reminder task since time_time is not parsed
 
     print(f"Created group message with ID: {group_message.id}")
     print(f"Active groups after creation: {list(active_groups.keys())}")
@@ -325,16 +278,16 @@ class GroupState:
     Attributes:
         members: Dictionary containing current group members by role
         backups: Dictionary containing backup players by role
-        reminder_task: Optional asyncio task for scheduled groups
+        reminder_task: Optional asyncio task for timed groups
     """
-    def __init__(self, interaction, initial_role, schedule_time=None):
+    def __init__(self, interaction, initial_role, time_time=None):
         """
         Initializes a new group state.
         
         Args:
             interaction: Discord interaction that created the group
             initial_role: Starting role of the group creator
-            schedule_time: Optional datetime for scheduled groups
+            time_time: Optional datetime for timed groups
         """
         self.members = {
             "Tank": None,
@@ -347,7 +300,7 @@ class GroupState:
             "DPS": []
         }
         self.reminder_task = None
-        self.schedule_time = schedule_time
+        self.time_time = time_time
         
         # Add the command user to their selected role
         user = interaction.user
@@ -468,7 +421,7 @@ class GroupState:
 
     async def send_reminder(self, channel):
         """
-        Sends reminders to group members before scheduled start time.
+        Sends reminders to group members before timed start time.
         
         Args:
             channel: The Discord channel to send fallback messages to
@@ -477,8 +430,8 @@ class GroupState:
             return
 
         try:
-            # Wait until 15 minutes before scheduled time
-            await asyncio.sleep(max(0, (self.schedule_time - datetime.now(pytz.UTC)).total_seconds() - 900))
+            # Wait until 15 minutes before timed time
+            await asyncio.sleep(max(0, (self.time_time - datetime.now(pytz.UTC)).total_seconds() - 900))
             
             # Send DMs to all members
             all_members = [
