@@ -8,7 +8,6 @@ import asyncio
 import pytz
 import sqlite3
 from sqlite3 import Error
-from keep_alive import keep_alive
 
 # Load environment variables from .env file
 load_dotenv()
@@ -531,6 +530,5 @@ async def record_completed_run(group_state, dungeon_name, key_level, guild_id,
     conn.close()
 
 
-keep_alive()
 # Run the bot with the token loaded from the environment variables
 bot.run(TOKEN)
