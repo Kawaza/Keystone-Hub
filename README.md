@@ -1,6 +1,6 @@
 # Keystone Hub
 
-**This is a copy of @Beel12213 Discord Bot, Tweaked for our community.
+**This is a copy of @Beel12213 Discord Bot, Tweaked for our community.**
 
 **Keystone Hub** is a robust Discord bot designed for World of Warcraft players who love running Mythic+ dungeons. This bot helps you quickly form balanced groups, manage roles, track statistics, and organise scheduled runs. Whether you're a tank, healer, or DPS, MythicMate ensures smooth group formation and provides valuable insights into your M+ journey.
 
