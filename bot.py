@@ -6,8 +6,6 @@ from dotenv import load_dotenv
 from datetime import datetime, timedelta
 import asyncio
 import pytz
-import sqlite3
-from sqlite3 import Error
 
 # Load environment variables from .env file
 load_dotenv()
@@ -58,6 +56,9 @@ async def on_ready():
 
 # Global dictionary to store active groups
 active_groups = {}
+
+# Dictionary to track group creators
+group_creators = {}
 
 
 async def update_group_embed(message, embed, group_state):
@@ -171,6 +172,7 @@ async def lfm(interaction: discord.Interaction, dungeon: str, key_level: str,
       "dungeon": full_dungeon_name,
       "key_level": key_level
   }
+  group_creators[group_message.id] = interaction.user.id
 
   # Update embed with initial group composition
   await update_group_embed(group_message, embed, group_state)
@@ -183,6 +185,59 @@ async def lfm(interaction: discord.Interaction, dungeon: str, key_level: str,
 
   print(f"Created group message with ID: {group_message.id}")
   print(f"Active groups after creation: {list(active_groups.keys())}")
+
+
+@bot.tree.command(name="lfm-delete",
+                  description="Delete all your LFM posts.")
+async def lfm_delete(interaction: discord.Interaction):
+  """Delete all LFM posts created by the user."""
+  print(f"LFM delete command received from {interaction.user}")
+  
+  # Find all the user's active posts
+  user_posts = []
+  for message_id, creator_id in group_creators.items():
+    if creator_id == interaction.user.id:
+      user_posts.append(message_id)
+  
+  if not user_posts:
+    await interaction.response.send_message(
+        "You don't have any active LFM posts to delete.", ephemeral=True)
+    return
+  
+  deleted_count = 0
+  
+  # Delete all the user's posts
+  for message_id in user_posts:
+    try:
+      # Get the message and delete it
+      message = await interaction.channel.fetch_message(message_id)
+      await message.delete()
+      deleted_count += 1
+      
+      # Clean up the data structures
+      if message_id in active_groups:
+        del active_groups[message_id]
+      if message_id in group_creators:
+        del group_creators[message_id]
+        
+    except discord.NotFound:
+      # Message was already deleted, just clean up data structures
+      if message_id in active_groups:
+        del active_groups[message_id]
+      if message_id in group_creators:
+        del group_creators[message_id]
+    except discord.Forbidden:
+      print(f"Bot doesn't have permission to delete message {message_id}")
+    except Exception as e:
+      print(f"Error deleting post {message_id}: {e}")
+  
+  if deleted_count > 0:
+    await interaction.response.send_message(
+        f"Successfully deleted {deleted_count} of your LFM posts.", ephemeral=True)
+    print(f"Deleted {deleted_count} posts for user {interaction.user}")
+  else:
+    await interaction.response.send_message(
+        "No posts were deleted. They may have already been removed.", ephemeral=True)
 
 
 @bot.event
@@ -461,73 +516,6 @@ class GroupState:
       pass
     except Exception as e:
       print(f"Error in reminder task: {e}")
-
-
-def create_connection():
-  try:
-    # Ensure data directory exists
-    os.makedirs('data', exist_ok=True)
-    conn = sqlite3.connect('data/mythicmate.db')
-    return conn
-  except Error as e:
-    print(f"Error connecting to database: {e}")
-    return None
-
-
-async def record_completed_run(group_state, dungeon_name, key_level, guild_id,
-                               guild_name):
-  conn = create_connection()
-  if conn is None:
-    return
-
-  try:
-    c = conn.cursor()
-
-    # Ensure server is registered
-    c.execute(
-        '''
-            INSERT OR IGNORE INTO servers (server_id, server_name)
-            VALUES (?, ?)
-        ''', (str(guild_id), guild_name))
-
-    # Insert run record
-    c.execute(
-        '''
-            INSERT INTO runs (server_id, dungeon_name, key_level, completion_time)
-            VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-        ''', (str(guild_id), dungeon_name, int(key_level.strip('+'))))
-    run_id = c.lastrowid
-
-    # Record participants
-    if group_state.members["Tank"]:
-      c.execute(
-          '''
-                INSERT INTO participants (run_id, server_id, user_id, role)
-                VALUES (?, ?, ?, ?)
-            ''',
-          (run_id, str(guild_id), str(group_state.members["Tank"].id), "Tank"))
-
-    if group_state.members["Healer"]:
-      c.execute(
-          '''
-                INSERT INTO participants (run_id, server_id, user_id, role)
-                VALUES (?, ?, ?, ?)
-            ''', (run_id, str(guild_id), str(
-              group_state.members["Healer"].id), "Healer"))
-
-    for dps in group_state.members["DPS"]:
-      if dps:
-        c.execute(
-            '''
-                    INSERT INTO participants (run_id, server_id, user_id, role)
-                    VALUES (?, ?, ?, ?)
-                ''', (run_id, str(guild_id), str(dps.id), "DPS"))
-
-    conn.commit()
-  except Error as e:
-    print(f"Error recording run: {e}")
-  finally:
-    conn.close()
 
 
 # Run the bot with the token loaded from the environment variables
